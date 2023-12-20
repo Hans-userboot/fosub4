@@ -13,7 +13,7 @@ from config import (
     RESTRICT,
     START_MESSAGE,
 )
-from database.sql import add_user, delete_user, full_userbase, query_msg
+from database.mongo import add_served_user, get_served_users
 from pyrogram import filters
 from pyrogram.enums import ParseMode
 from pyrogram.errors import FloodWait, InputUserDeactivated, UserIsBlocked
@@ -63,7 +63,7 @@ async def start_command(client: Bot, message: Message):
     )
 
     try:
-        await add_user(id, user_name)
+        await add_served_user(id)
     except:
         pass
     text = message.text
@@ -179,57 +179,49 @@ async def get_users(client: Bot, message: Message):
     msg = await client.send_message(
         chat_id=message.chat.id, text="Sedang diproses..."
     )
-    users = await full_userbase()
+    users = await get_served_users()
     await msg.edit(f"{len(users)} Pengguna")
 
 
 @Bot.on_message(filters.command("broadcast") & filters.user(ADMINS))
 async def send_text(client: Bot, message: Message):
     if message.reply_to_message:
-        query = await query_msg()
-        broadcast_msg = message.reply_to_message
-        total = 0
-        successful = 0
-        blocked = 0
-        deleted = 0
-        unsuccessful = 0
-
-        pls_wait = await message.reply(
-            "Mengirim pesan siaran..."
-        )
-        for row in query:
-            chat_id = int(row[0])
-            if chat_id not in ADMINS:
-                try:
-                    await broadcast_msg.copy(chat_id, protect_content=RESTRICT)
-                    successful += 1
-                except FloodWait as e:
-                    await asyncio.sleep(e.x)
-                    await broadcast_msg.copy(chat_id, protect_content=RESTRICT)
-                    successful += 1
-                except UserIsBlocked:
-                    await delete_user(chat_id)
-                    blocked += 1
-                except InputUserDeactivated:
-                    await delete_user(chat_id)
-                    deleted += 1
-                except BaseException:
-                    unsuccessful += 1
-                total += 1
-        status = f"""
-Berhasil!
-Pengguna: {total}
-Berhasil: {successful}
-Gagal: {unsuccessful}
-Diblokir: {blocked}
-Akun Terhapus: {deleted}"""
-        return await pls_wait.edit(status)
+        anu = message.reply_to_message
+        x = message.reply_to_message.id
+        y = message.chat.id
     else:
-        msg = await message.reply(
-            "Balas ke pesan!"
+        if len(message.command) < 2:
+            return await message.reply_text(
+                "**Usage**:\n/broadcast [MESSAGE] or [Reply to a Message]"
+            )
+        query = message.text.split(None, 1)[1]
+
+    susr = 0
+    served_users = []
+    ayu = await message.reply("Broadcasting...")
+    susers = await get_served_users()
+    for user in susers:
+       served_users.append(int(user["user_id"]))
+    for i in served_users:
+        try:
+            await anu.copy(i
+            ) if message.reply_to_message else await client.send_message(
+                i, text=query
+            )
+            susr += 1
+        except FloodWait as e:
+            flood_time = int(e.x)
+            if flood_time > 200:
+                continue
+            await asyncio.sleep(flood_time)
+        except Exception:
+            pass
+    try:
+        await ayu.edit(
+            f"Broadcasted Message to {susr} Users."
         )
-        await asyncio.sleep(5)
-        await msg.delete()
+    except:
+        pass
 
 
 @Bot.on_message(filters.command("ping"))

@@ -8,7 +8,7 @@ from config import (
     API_HASH,
     API_ID,
     CHANNEL_DB,
-    DATABASE_URL,
+    MONGO_URL as DATABASE_URL,
     FORCE_MESSAGE,
     FORCE_SUB_1,
     FORCE_SUB_2,

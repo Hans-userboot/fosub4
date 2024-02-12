@@ -3,7 +3,7 @@
 import os
 import sys
 from os import environ, execle, system
-
+import subprocess
 from bot import Bot
 from git import Repo
 from git.exc import InvalidGitRepositoryError
@@ -53,16 +53,16 @@ def updater():
 
 
 @Bot.on_message(filters.command("update") & filters.user(ADMINS))
-async def update_bot(_, message: Message):
-    message.chat.id
-    msg = await message.reply_text("...")
-    update_avail = updater()
-    if update_avail:
-        await msg.edit("Updated!")
-        system("git reset && git pull --rebase -f && pip3 install --no-cache-dir -r requirements.txt")
-        execle(sys.executable, sys.executable, "main.py", environ)
-        return
-    await msg.edit("Updated!")
+async def update(client, message):
+    try:
+        out = subprocess.check_output(["git", "pull"]).decode("UTF-8")
+        if "Already up to date." in str(out):
+            return await message.reply_text("Its already up-to date!")
+        await message.reply_text(f"{out}")
+    except Exception as e:
+        return await message.reply_text(str(e))
+    await message.reply_text("<b>Updated with default branch, restarting now.</b>")
+    os.system(f"kill -9 {os.getpid()} && python3 main.py")
 
 
 @Bot.on_message(filters.command("restart") & filters.user(ADMINS))
